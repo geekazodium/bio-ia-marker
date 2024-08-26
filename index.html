@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>BIO IA MARKER</title>
+    <script src = "hooks/localstorage.js"></script>
+    <script src = "hooks/console.js"></script>
+    <script src = "hooks/uiEvents.js"></script>
+  </head>
+  <body>
+    <script type="module">
+      import init, {create_state} from "./pkg/bio_ia_marker.js";
+      await init();
+      state = create_state();
+    </script>
+  </body>
+</html>
