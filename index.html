@@ -5,13 +5,24 @@
     <title>BIO IA MARKER</title>
     <script src = "hooks/localstorage.js"></script>
     <script src = "hooks/console.js"></script>
-    <script src = "hooks/uiEvents.js"></script>
+    <script src = "hooks/ui.js"></script>
+    <link href="dropdown.css" rel="stylesheet">
   </head>
   <body>
+    <div>
+      <h1>
+        Bio IA Marker
+      </h1>
+    </div>
+    <div class = "strand_selection">
+      <ul id = "strand_selection">
+      </ul>
+    </div>
     <script type="module">
       import init, {create_state} from "./pkg/bio_ia_marker.js";
       await init();
       state = create_state();
+      state.load_last_grades();
     </script>
   </body>
 </html>

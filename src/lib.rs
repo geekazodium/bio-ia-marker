@@ -1,12 +1,35 @@
 
 use core::panic;
-use std::usize;
+use std::{usize, vec};
 
 use wasm_bindgen::prelude::*;
 
 static GRADE_EXISTS_FLAG:u8 = 0b10000000;
+
+static SUB_STRAND_HTML: &str = "
+<li class=\"dropdown_parent_bar\"> 
+    <h3>
+        strand n
+        <img src = \"images/dropdown_triangle.svg\" width=\"10px\" height=\"10px\">
+    </h3>
+</li>";
+
+static OVERALL_STRAND_HTML: &str ="
+
+<li class=\"dropdown_parent_bar\">
+    <h2>
+        Research Design
+        <img src = \"images/dropdown_triangle.svg\" width=\"10px\" height=\"10px\">
+    </h2>
+</li>
+";
+
 #[wasm_bindgen]
 extern {
+    pub fn check_component_exists(s: &str) -> bool;
+    pub fn extern_create_child(parent_id: &str,html: &str, id: &str) -> bool;
+    pub fn extern_move_after(this: &str,other: &str) -> bool;
+    pub fn extern_restyle(id: &str,style: &str)->bool;
     pub fn alert(s: &str);
     pub fn log(s: &str);
     pub fn crash(s: &str);
@@ -44,25 +67,28 @@ pub struct StudentGrades{
 
 impl StudentGrades {
     fn new()->StudentGrades{
+        let attempt = HtmlComponent::new_from_document("strand_selection".to_string());
+        if attempt.is_none() {return StudentGrades{overall:vec![]};}
+        let menu_parent = attempt.unwrap();
         let overall_criteria = vec![
             OverallCriteria::new(StrandName::ResearchDesignOverall,vec![
-                NumberedStrand::new(StrandName::ResearchDesign1),
-                NumberedStrand::new(StrandName::ResearchDesign2),
-                NumberedStrand::new(StrandName::ResearchDesign3)
-            ]),
+                NumberedStrand::new(StrandName::ResearchDesign1,&menu_parent),
+                NumberedStrand::new(StrandName::ResearchDesign2,&menu_parent),
+                NumberedStrand::new(StrandName::ResearchDesign3,&menu_parent)
+            ],&menu_parent),
             OverallCriteria::new(StrandName::DataAnalysisOverall,vec![
-                NumberedStrand::new(StrandName::DataAnalysis1),
-                NumberedStrand::new(StrandName::DataAnalysis2),
-                NumberedStrand::new(StrandName::DataAnalysis3)
-            ]),
+                NumberedStrand::new(StrandName::DataAnalysis1,&menu_parent),
+                NumberedStrand::new(StrandName::DataAnalysis2,&menu_parent),
+                NumberedStrand::new(StrandName::DataAnalysis3,&menu_parent)
+            ],&menu_parent),
             OverallCriteria::new(StrandName::ConclusionOverall,vec![
-                NumberedStrand::new(StrandName::Conclusion1),
-                NumberedStrand::new(StrandName::Conclusion2)
-            ]),
+                NumberedStrand::new(StrandName::Conclusion1,&menu_parent),
+                NumberedStrand::new(StrandName::Conclusion2,&menu_parent)
+            ],&menu_parent),
             OverallCriteria::new(StrandName::EvaluationOverall,vec![
-                NumberedStrand::new(StrandName::Evaluation1),
-                NumberedStrand::new(StrandName::Evaluation2)
-            ])
+                NumberedStrand::new(StrandName::Evaluation1,&menu_parent),
+                NumberedStrand::new(StrandName::Evaluation2,&menu_parent)
+            ],&menu_parent)
         ];
         StudentGrades{
             overall:overall_criteria
@@ -184,18 +210,23 @@ trait Grade {
 }
 
 struct NumberedStrand{
+    ui_component:HtmlComponent,
     comment:Option<String>,
     value:u8,
     strand_name:StrandName
 }
 
 impl NumberedStrand{
-    fn new(strand_name: StrandName)->NumberedStrand{
+    fn new(strand_name: StrandName, html_parent: &HtmlComponent)->NumberedStrand{
         NumberedStrand{
+            ui_component: html_parent.create_child(SUB_STRAND_HTML, strand_name.to_string()).unwrap(),
             comment:None,
             value:0,
             strand_name
         }
+    }
+    fn init_html(&self){
+        self.ui_component.restyle("height:0;--anim-duration:0;--anim-direction:unset;visibility:collapse;");
     }
 }
 
@@ -226,6 +257,7 @@ impl Grade for NumberedStrand {
     }
 }
 struct OverallCriteria{
+    ui_component:HtmlComponent,
     comment:Option<String>,
     override_val:Option<u8>,
     strands:Vec<NumberedStrand>,
@@ -265,12 +297,51 @@ impl Grade for OverallCriteria {
 }
 
 impl OverallCriteria{
-    fn new(strand_name:StrandName,ref_strands:Vec<NumberedStrand>)->OverallCriteria{
-        OverallCriteria{
+    fn new(strand_name:StrandName,ref_strands:Vec<NumberedStrand>,html_parent: &HtmlComponent)->OverallCriteria{
+        let c = OverallCriteria{
+            ui_component: html_parent.create_child(OVERALL_STRAND_HTML, strand_name.to_string()).unwrap(),
             comment:None,
             override_val:None,
             strands:ref_strands,
             strand_name
+        };
+        c.init_html();
+        c
+    }
+    fn init_html(&self){
+        for s in &self.strands{
+            s.init_html();
+            s.ui_component.move_after(&self.ui_component);
         }
+    }
+}
+
+struct HtmlComponent{
+    html_id: String
+}
+
+impl HtmlComponent {
+    fn new_from_document(id:String) -> Option<HtmlComponent>{
+        if !check_component_exists(&id) {
+            crash("attempted to get component from document which does not exist");
+            return None;
+        }
+        Some(HtmlComponent{
+            html_id:id
+        })
+    }
+    fn create_child(&self,html: &str,id: &str) -> Option<HtmlComponent>{
+        let html_id = id.to_string() + "-wasm";
+        if !extern_create_child(&self.html_id, html, &html_id){
+            crash("failed to create child component");
+            return None;
+        }
+        HtmlComponent::new_from_document(html_id)
+    }
+    fn move_after(&self, other: &HtmlComponent)-> bool{
+        extern_move_after(&self.html_id, &other.html_id)
+    }
+    fn restyle(&self, style: &str)-> bool{
+        extern_restyle(&self.html_id, style)
     }
 }

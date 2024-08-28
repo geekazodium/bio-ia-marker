@@ -1,0 +1,65 @@
+.strand_selection ul{
+    display: flex;
+    flex-direction:column;
+    text-decoration: none;
+    list-style: none;
+    align-items: end;
+    width: fit-content;
+    --li-padding: 8px;
+    --li-border:black 2pt solid;
+}
+
+.strand_selection ul li h2{
+    margin: 0;
+    padding: var(--li-padding);
+    border: var(--li-border);
+}
+
+.strand_selection ul li h3{ /*https://stackoverflow.com/questions/46197844/is-it-possible-to-use-a-ternary-operator-in-css*/
+    margin: 0;
+    padding: var(--li-padding);
+    border: var(--li-border);
+    animation-name: dropdown-anim;
+    animation-duration: var(--anim-duration);
+    animation-timing-function: ease-in;
+    animation-direction: var(--anim-direction);
+}
+@keyframes dropdown-anim { /*https://www.w3schools.com/css/css3_animations.asp*/
+    100%{
+        visibility: visible;
+        height:100%;
+        padding: var(--li-padding);
+        font-size: 1.17em;
+    }
+    0%{
+        font-size: 0;
+        height: 0;
+        padding: 0;
+        visibility: collapse;
+    }
+}
+
+.dropdown_parent_bar{
+    user-select: none;
+}
+
+.dropdown_parent_bar img{
+    transform: rotate(90deg);
+}
+
+.dropdown_parent_bar :hover img{
+    transform: rotate(180deg) scale(150%);
+    animation-name: dropdown-spin;
+    animation-duration: .1s;
+    animation-direction: normal;
+    animation-timing-function: ease-in-out;
+}
+
+@keyframes dropdown-spin {
+    100%{
+        transform: rotate(180deg) scale(150%);
+    }
+    0%{
+        transform: rotate(90deg) scale(100%);
+    }
+}
