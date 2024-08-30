@@ -1,6 +1,6 @@
 
 use core::panic;
-use std::{usize, vec};
+use std::{cell::RefCell, rc::Rc, usize, vec};
 
 use wasm_bindgen::prelude::*;
 
@@ -9,16 +9,15 @@ static GRADE_EXISTS_FLAG:u8 = 0b10000000;
 static SUB_STRAND_HTML: &str = "
 <li class=\"dropdown_parent_bar\"> 
     <h3>
-        strand n
+        placeholder_strand
         <img src = \"images/dropdown_triangle.svg\" width=\"10px\" height=\"10px\">
     </h3>
 </li>";
 
 static OVERALL_STRAND_HTML: &str ="
-
 <li class=\"dropdown_parent_bar\">
     <h2>
-        Research Design
+        placeholder_strand
         <img src = \"images/dropdown_triangle.svg\" width=\"10px\" height=\"10px\">
     </h2>
 </li>
@@ -27,9 +26,12 @@ static OVERALL_STRAND_HTML: &str ="
 #[wasm_bindgen]
 extern {
     pub fn check_component_exists(s: &str) -> bool;
-    pub fn extern_create_child(parent_id: &str,html: &str, id: &str) -> bool;
-    pub fn extern_move_after(this: &str,other: &str) -> bool;
-    pub fn extern_restyle(id: &str,style: &str)->bool;
+    pub fn extern_create_child(parent_id: &str, html: &str, id: &str) -> bool;
+    pub fn extern_move_after(this: &str, other: &str) -> bool;
+    pub fn extern_restyle(id: &str, style: &str) -> bool;
+    pub fn extern_listen_for_mouse(id: &str, listener: MouseEventInterface);
+    pub fn js_reset_anim(id: &str);
+    pub fn js_delayed_set_height(id: &str, h:&str, delay: f32);
     pub fn alert(s: &str);
     pub fn log(s: &str);
     pub fn crash(s: &str);
@@ -46,14 +48,14 @@ pub fn create_state()-> State{
 
 #[wasm_bindgen]
 pub struct State{
-    student_grades:Option<StudentGrades>
+    student_grades:Option<Rc<RefCell<StudentGrades>>>
 }
 
 #[wasm_bindgen]
 impl State {
     pub fn load_last_grades(&mut self){
-        let mut grades = StudentGrades::new();
-        grades.load_last_grades();
+        let grades = StudentGrades::new();
+        grades.borrow_mut().load_last_grades();
         self.student_grades = Some(grades);
     }
     pub fn write_grade(&mut self,index: usize, val: u8){
@@ -62,13 +64,14 @@ impl State {
 }
 
 pub struct StudentGrades{
-    overall:Vec<OverallCriteria>
+    overall:Vec<OverallCriteria>,
+    current_selected_overall:Option<usize>
 }
 
 impl StudentGrades {
-    fn new()->StudentGrades{
+    fn new()->Rc<RefCell<StudentGrades>>{
         let attempt = HtmlComponent::new_from_document("strand_selection".to_string());
-        if attempt.is_none() {return StudentGrades{overall:vec![]};}
+        if attempt.is_none() {crash("document is missing component"); panic!("");}
         let menu_parent = attempt.unwrap();
         let overall_criteria = vec![
             OverallCriteria::new(StrandName::ResearchDesignOverall,vec![
@@ -90,17 +93,54 @@ impl StudentGrades {
                 NumberedStrand::new(StrandName::Evaluation2,&menu_parent)
             ],&menu_parent)
         ];
-        StudentGrades{
-            overall:overall_criteria
+        let ret = Rc::new(RefCell::new(StudentGrades{
+            overall:overall_criteria,
+            current_selected_overall:Some(0)
+        }));
+        for s in &ret.borrow().overall{
+            extern_listen_for_mouse(&s.ui_component.html_id,MouseEventInterface::new(ret.clone()));
         }
+        ret
     }
     fn load_last_grades(&mut self){
         for strand in &mut self.overall{
-            strand.load_saved();
-            for sub_strand in &mut strand.strands{
+            let s = strand;
+            s.load_saved();
+            for sub_strand in &mut s.strands{
                 sub_strand.load_saved();
             }
         }
+    }
+    fn select_overall(&mut self,i: usize){
+        if i>=self.overall.len(){
+            return;
+        }
+        self.overall[i].show_sub_strands();
+        self.current_selected_overall = Some(i);
+    }
+    fn unselect_overall(&mut self){
+        if self.current_selected_overall.is_none(){
+            return;
+        }
+        self.overall[self.current_selected_overall.unwrap()].hide_sub_strands();
+        self.current_selected_overall = None;
+    }
+}
+
+impl MouseEventListener for StudentGrades{
+    fn on_mouse_down(&mut self, id: &str) {
+        if self.current_selected_overall.is_some() {
+            self.unselect_overall();
+        }
+        for i in 0..self.overall.len(){
+            if self.overall[i].strand_name.to_string().eq(id) {
+                self.select_overall(i);
+                return;
+            }
+        }
+    }
+    fn on_mouse_up(&mut self, id: &str) {
+        
     }
 }
 
@@ -219,14 +259,27 @@ struct NumberedStrand{
 impl NumberedStrand{
     fn new(strand_name: StrandName, html_parent: &HtmlComponent)->NumberedStrand{
         NumberedStrand{
-            ui_component: html_parent.create_child(SUB_STRAND_HTML, strand_name.to_string()).unwrap(),
+            ui_component: 
+                html_parent
+                .create_child(
+                    &SUB_STRAND_HTML
+                    .replace("placeholder_strand", strand_name.to_string()), 
+                    strand_name.to_string())
+                .unwrap(),
             comment:None,
             value:0,
             strand_name
         }
     }
+    //https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_animations/Using_CSS_animations
     fn init_html(&self){
-        self.ui_component.restyle("height:0;--anim-duration:0;--anim-direction:unset;visibility:collapse;");
+        self.hide();
+    }
+    fn show(&self){
+        self.ui_component.restyle("height:100%;--anim-duration:.2s;--anim-direction:forward;visibility:initial;--anim-name:dropdown-anim");
+    }
+    fn hide(&self){
+        self.ui_component.restyle("height:0;--anim-duration:0;--anim-direction:unset;visibility:collapse;--anim-name:none");
     }
 }
 
@@ -299,7 +352,14 @@ impl Grade for OverallCriteria {
 impl OverallCriteria{
     fn new(strand_name:StrandName,ref_strands:Vec<NumberedStrand>,html_parent: &HtmlComponent)->OverallCriteria{
         let c = OverallCriteria{
-            ui_component: html_parent.create_child(OVERALL_STRAND_HTML, strand_name.to_string()).unwrap(),
+            ui_component: 
+                html_parent
+                .create_child(
+                    &OVERALL_STRAND_HTML
+                    .replace("placeholder_strand", strand_name.to_string())
+                    .replace(" Overall",""), 
+                    strand_name.to_string())
+                .unwrap(),
             comment:None,
             override_val:None,
             strands:ref_strands,
@@ -312,6 +372,16 @@ impl OverallCriteria{
         for s in &self.strands{
             s.init_html();
             s.ui_component.move_after(&self.ui_component);
+        }
+    }
+    fn show_sub_strands(&self){
+        for s in &self.strands{
+            s.show();
+        }
+    }
+    fn hide_sub_strands(&self){
+        for s in &self.strands{
+            s.hide();
         }
     }
 }
@@ -331,7 +401,7 @@ impl HtmlComponent {
         })
     }
     fn create_child(&self,html: &str,id: &str) -> Option<HtmlComponent>{
-        let html_id = id.to_string() + "-wasm";
+        let html_id = id.to_string();
         if !extern_create_child(&self.html_id, html, &html_id){
             crash("failed to create child component");
             return None;
@@ -343,5 +413,37 @@ impl HtmlComponent {
     }
     fn restyle(&self, style: &str)-> bool{
         extern_restyle(&self.html_id, style)
+    }
+}
+
+trait MouseEventListener{
+    fn on_mouse_down(&mut self, id: &str);
+    fn on_mouse_up(&mut self, id: &str);
+}
+
+#[wasm_bindgen]
+struct MouseEventInterface{
+    callback:Rc<RefCell<dyn MouseEventListener>> //where do I start?
+    //Rc (reference count, lifetime guarentees may not be easily ensured by the lifetime of class it is stored in)
+    //RefCell (indirection for reference???? idk, allows attempts to mutably borrow and may panic if borrows already exist, can only have one owner of the value, requiring reference counting to allow multuple ownership of data)
+}
+
+#[wasm_bindgen]
+impl MouseEventInterface {
+    pub fn on_mouse_down(&self,id: &str){
+        self.callback.borrow_mut().on_mouse_down(id);
+    }
+    pub fn on_mouse_up(&self,id: &str){
+        self.callback.borrow_mut().on_mouse_up(id);
+    }
+}
+
+//need to use refcell
+impl MouseEventInterface {
+    //callback needso to be a ref
+    fn new(callback: Rc<RefCell<dyn MouseEventListener>>)->MouseEventInterface{
+        MouseEventInterface{
+            callback
+        }
     }
 }

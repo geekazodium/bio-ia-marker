@@ -36,3 +36,8 @@ function extern_restyle(id, style){
     element.style = style;
     return true;
 }
+
+function extern_listen_for_mouse(id, listener){
+    document.getElementById(id).addEventListener("mousedown",(e)=>{listener.on_mouse_down(id);});
+    document.getElementById(id).addEventListener("mouseup",(e)=>{listener.on_mouse_up(id);});
+}

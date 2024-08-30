@@ -5,8 +5,19 @@
     list-style: none;
     align-items: end;
     width: fit-content;
+    padding-left: calc((100% - var(--col-1-width))*.5);
     --li-padding: 8px;
     --li-border:black 2pt solid;
+}
+
+.strand_selection ul div{
+    width: var(--col-1-width);
+}
+
+.strand_selection ul div li{
+    width: 100%;
+    text-align: end;
+    display: block;
 }
 
 .strand_selection ul li h2{
@@ -19,9 +30,11 @@
     margin: 0;
     padding: var(--li-padding);
     border: var(--li-border);
-    animation-name: dropdown-anim;
+    align-self: flex-end;
+    margin-left: 20pt;
+    animation-name: var(--anim-name);
     animation-duration: var(--anim-duration);
-    animation-timing-function: ease-in;
+    animation-timing-function: ease-in-out;
     animation-direction: var(--anim-direction);
 }
 @keyframes dropdown-anim { /*https://www.w3schools.com/css/css3_animations.asp*/
@@ -33,7 +46,7 @@
     }
     0%{
         font-size: 0;
-        height: 0;
+        height: 0%;
         padding: 0;
         visibility: collapse;
     }
@@ -62,4 +75,21 @@
     0%{
         transform: rotate(90deg) scale(100%);
     }
+}
+
+.overall_layout{
+    --col-1-width: 220px;
+    display: grid;
+    grid-template-rows: min-content min-content;
+    grid-template-columns: calc(var(--col-1-width) + 20px) calc(100vw - var(--col-1-width) - 60px);
+}
+
+.level_descriptor{
+    display: flex;
+    flex-direction: row;
+}
+
+.level_descriptor p{
+    display: flex;
+    flex-direction: row;
 }
