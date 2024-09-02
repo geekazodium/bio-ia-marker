@@ -5,6 +5,7 @@
     list-style: none;
     align-items: end;
     width: fit-content;
+    margin:0;
     padding-left: calc((100% - var(--col-1-width))*.5);
     --li-padding: 8px;
     --li-border:black 2pt solid;
@@ -23,12 +24,14 @@
 .strand_selection ul li h2{
     margin: 0;
     padding: var(--li-padding);
+    margin: -1pt;
     border: var(--li-border);
 }
 
 .strand_selection ul li h3{ /*https://stackoverflow.com/questions/46197844/is-it-possible-to-use-a-ternary-operator-in-css*/
     margin: 0;
     padding: var(--li-padding);
+    margin: -1pt;
     border: var(--li-border);
     align-self: flex-end;
     margin-left: 20pt;
@@ -80,16 +83,36 @@
 .overall_layout{
     --col-1-width: 220px;
     display: grid;
-    grid-template-rows: min-content min-content;
-    grid-template-columns: calc(var(--col-1-width) + 20px) calc(100vw - var(--col-1-width) - 60px);
+    grid-template-columns: calc(var(--col-1-width) + 20px) calc(70vw - var(--col-1-width) - 60px);
 }
 
 .level_descriptor{
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr 2fr;
+    height: 200px;
 }
 
 .level_descriptor p{
-    display: flex;
-    flex-direction: row;
+    padding: 10px;
+    border: 2pt;
+    border-color: black;
+    border-style: solid;
+    margin: -1pt;
+}
+
+.comment_input_box{
+    min-width: 100%; 
+    max-width: 100%;
+    padding: 0;
+    margin: -1px; 
+    min-height: 20%;
+}
+
+.level_input_box{
+    min-width: calc(100% - 14.3%); 
+    max-width: calc(100% - 14.3%);
+    padding: 0;
+    margin: -1px; 
+    margin-left: 7.14%;
+    min-height: 20%;
 }

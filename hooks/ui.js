@@ -41,3 +41,23 @@ function extern_listen_for_mouse(id, listener){
     document.getElementById(id).addEventListener("mousedown",(e)=>{listener.on_mouse_down(id);});
     document.getElementById(id).addEventListener("mouseup",(e)=>{listener.on_mouse_up(id);});
 }
+
+function extern_set_content_text(id, text){
+    document.getElementById(id).innerText = text;
+}
+
+function sync_selected_grade_display(){
+    document.getElementById('selected_value_display').innerText = document.getElementById('selected_value_slidebar').value;
+}
+
+function extern_listen_for_input(id, listener){
+    document.getElementById(id).addEventListener("input", (e)=>{listener.on_input(id,document.getElementById(id).value);});
+    document.getElementById(id).addEventListener("change", (e)=>{listener.on_change(id,document.getElementById(id).value);});
+}
+
+function extern_simulate_click(id){//https://stackoverflow.com/questions/2705583/how-to-simulate-a-click-with-javascript
+    document.getElementById(id).dispatchEvent(new MouseEvent("mousedown"));
+    document.getElementById(id).dispatchEvent(new MouseEvent("mouseup"))
+}
+
+document.addEventListener("DOMContentLoaded",sync_selected_grade_display);

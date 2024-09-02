@@ -15,29 +15,35 @@
       </h1>
     </div>
     <div class = "overall_layout">
-      <div class = "strand_selection">
-        <ul id = "strand_selection">
-        </ul>
-      </div>
-      <div class = "level_descriptor">
-        <p>
-          The student did not meet the standards listed
-        </p>
-        <p>
-          The student was okay at this I guess
-        </p>
-        <p>
-          The student was pretty good at this
-        </p>
-        <p>
-          The student is a god.
-        </p>
+      <div>
+        <div class = "strand_selection">
+          <ul id = "strand_selection">
+          </ul>
+        </div>
+        <div>
+          hhmmmmm
+        </div>
       </div>
       <div>
-        simp
-      </div>
-      <div>
-        squirrels in my pants
+        <div class = "level_descriptor">
+          <p id = "strand_fail">
+            The student did not meet any criteria listed
+          </p>
+          <p id = "strand_low">
+            SELECT A SUBSTRAND
+          </p>
+          <p id = "strand_mid">
+            SELECT A SUBSTRAND
+          </p>
+          <p id = "strand_high">
+            SELECT A SUBSTRAND
+          </p>
+        </div>
+        <div style="display: flex;flex-direction:row;">
+          <input type="range" step="1" max = "6" min = "0" class = "level_input_box" id = "selected_value_slidebar" oninput="sync_selected_grade_display()">
+          <h1 style="margin-left: 20px;" id = "selected_value_display">8</h1>
+        </div>
+        <textarea id = "comment_input" class = "comment_input_box"></textarea>
       </div>
     </div>
     <script type="module">

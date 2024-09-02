@@ -1,0 +1,73 @@
+Research Design
+
+    The research question is stated without context. 
+
+    The research question is outlined within a broad context. 
+
+    The research question is described within a specific and appropriate context. 
+
+
+    Methodological considerations associated with collecting data relevant to the research question are stated. 
+
+    Methodological considerations associated with collecting relevant and sufficient data to answer the research question are described. 
+
+    Methodological considerations associated with collecting relevant and sufficient data to answer the research question are explained. 
+
+
+    The description of the methodology for collecting or selecting data lacks the detail to allow for the investigation to be reproduced. 
+
+    The description of the methodology for collecting or selecting data allows for the investigation to be reproduced with few ambiguities or omissions. 
+
+    The description of the methodology for collecting or selecting data allows for the investigation to be reproduced. 
+
+Data Analysis
+
+    The recording and processing of the data is communicated but is neither clear nor precise. 
+
+    The communication of the recording and processing of the data is either clear or precise. 
+
+    The communication of the recording and processing of the data is both clear and precise. 
+
+
+    The recording and processing of data shows limited evidence of the consideration of uncertainties. 
+
+    The recording and processing of data shows evidence of a consideration of uncertainties but with some significant omissions or inaccuracies. 
+
+    The recording and processing of data shows evidence of an appropriate consideration of uncertainties. 
+
+
+    Some processing of data relevant to addressing the research question is carried out but with major omissions, inaccuracies or inconsistencies 
+
+    The processing of data relevant to addressing the research question is carried out but with some significant omissions, inaccuracies or inconsistencies. 
+
+    The processing of data relevant to addressing the research question is carried out appropriately and accurately. 
+
+Conclusion
+
+    A conclusion is stated that is relevant to the research question but is not supported by the analysis presented. 
+
+    A conclusion is described that is relevant to the research question but is not fully consistent with the analysis presented. 
+
+    A conclusion is justified that is relevant to the research question and fully consistent with the analysis presented. 
+
+
+    The conclusion makes superficial comparison to the accepted scientific context. 
+
+    A conclusion is described that makes some relevant comparison to the accepted scientific context. 
+
+    A conclusion is justified through relevant comparison to the accepted scientific context. 
+
+Evaluation
+
+    The report states generic methodological weaknesses or limitations. 
+
+    The report describes specific methodological weaknesses or limitations. 
+
+    The report explains the relative impact of specific methodological weaknesses or limitations. 
+
+
+    Realistic improvements to the investigation are stated. 
+
+    Realistic improvements to the investigation that are relevant to the identified weaknesses or limitations, are described. 
+
+    Realistic improvements to the investigation, that are relevant to the identified weaknesses or limitations, are explained. 
