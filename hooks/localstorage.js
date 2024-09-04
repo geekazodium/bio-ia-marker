@@ -2,6 +2,7 @@ let state;
 
 function save_val_byte(key,val){
     localStorage.setItem(key,val+"b");
+    console.log(localStorage);
 }
 
 function read_val_byte(key){

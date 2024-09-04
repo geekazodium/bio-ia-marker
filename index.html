@@ -25,7 +25,7 @@
         </div>
       </div>
       <div>
-        <div class = "level_descriptor">
+        <div class = "level_descriptor" id = "level_descriptor" style="visibility: collapse;height:0;">
           <p id = "strand_fail">
             The student did not meet any criteria listed
           </p>
@@ -40,6 +40,7 @@
           </p>
         </div>
         <div style="display: flex;flex-direction:row;">
+          <button id="selected_value_reset" style="width: 45px;margin-top: 15px;margin-bottom: 15px;background-color: transparent;">reset</button>
           <input type="range" step="1" max = "6" min = "0" class = "level_input_box" id = "selected_value_slidebar" oninput="sync_selected_grade_display()">
           <h1 style="margin-left: 20px;" id = "selected_value_display">8</h1>
         </div>

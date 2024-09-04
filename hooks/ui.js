@@ -55,9 +55,24 @@ function extern_listen_for_input(id, listener){
     document.getElementById(id).addEventListener("change", (e)=>{listener.on_change(id,document.getElementById(id).value);});
 }
 
+function extern_get_input_value(id){
+    return document.getElementById(id).value;
+}
+
 function extern_simulate_click(id){//https://stackoverflow.com/questions/2705583/how-to-simulate-a-click-with-javascript
     document.getElementById(id).dispatchEvent(new MouseEvent("mousedown"));
     document.getElementById(id).dispatchEvent(new MouseEvent("mouseup"))
+}
+
+function extern_set_input_value(id,value){
+    document.getElementById(id).value = value;
+    sync_selected_grade_display();
+}
+
+function extern_listen_for_window_events(listener){
+    //https://stackoverflow.com/questions/13443503/run-javascript-code-on-window-close-or-page-refresh
+    document.addEventListener("visibilitychange",()=>{listener.on_window_change()});
+    window.addEventListener("beforeunload",()=>{listener.on_window_close()});
 }
 
 document.addEventListener("DOMContentLoaded",sync_selected_grade_display);

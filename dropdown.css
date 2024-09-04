@@ -82,6 +82,7 @@
 
 .overall_layout{
     --col-1-width: 220px;
+    --col-2-width:700px;
     display: grid;
     grid-template-columns: calc(var(--col-1-width) + 20px) calc(70vw - var(--col-1-width) - 60px);
 }
@@ -89,6 +90,7 @@
 .level_descriptor{
     display: grid;
     grid-template-columns: 1fr 2fr 2fr 2fr;
+    width: var(--col-2-width);
     height: 200px;
 }
 
@@ -101,18 +103,18 @@
 }
 
 .comment_input_box{
-    min-width: 100%; 
-    max-width: 100%;
+    min-width: var(--col-2-width); 
+    max-width: var(--col-2-width);
     padding: 0;
     margin: -1px; 
     min-height: 20%;
 }
 
 .level_input_box{
-    min-width: calc(100% - 14.3%); 
-    max-width: calc(100% - 14.3%);
+    min-width: calc(var(--col-2-width) - 14.3%); 
+    max-width: calc(var(--col-2-width) - 14.3%);
     padding: 0;
     margin: -1px; 
-    margin-left: 7.14%;
+    margin-left: calc(7.14% - 45px);
     min-height: 20%;
 }

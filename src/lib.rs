@@ -6,6 +6,9 @@ use wasm_bindgen::prelude::*;
 
 static GRADE_EXISTS_FLAG:u8 = 0b10000000;
 static GRADE_SELECTED_VALUE_SLIDEBAR_ID:&str = "selected_value_slidebar";
+static COMMENT_VALUE_INPUT_AREA_ID:&str = "comment_input";
+static LEVEL_DESCRIPTOR_AREA_ID:&str = "level_descriptor";
+static RESET_VALUE_BUTTON_ID:&str = "selected_value_reset";
 
 static SUB_STRAND_HTML: &str = "
 <li class=\"dropdown_parent_bar\"> 
@@ -32,7 +35,10 @@ extern {
     pub fn extern_restyle(id: &str, style: &str) -> bool;
     pub fn extern_listen_for_mouse(id: &str, listener: MouseEventInterface);
     pub fn extern_listen_for_input(id: &str, listener: InputEventInterface);
+    pub fn extern_listen_for_window_events(listener: WindowEventInterface);
+    pub fn extern_get_input_value(id: &str) -> String;
     pub fn extern_set_content_text(id: &str, text: &str);
+    pub fn extern_set_input_value(id: &str, value: &str);
     pub fn extern_simulate_click(id: &str);
     pub fn js_reset_anim(id: &str);
     pub fn js_delayed_set_height(id: &str, h:&str, delay: f32);
@@ -59,7 +65,6 @@ pub struct State{
 impl State {
     pub fn load_last_grades(&mut self){
         let grades = StudentGrades::new();
-        grades.borrow_mut().load_last_grades();
         self.student_grades = Some(grades);
     }
     pub fn write_grade(&mut self,index: usize, val: u8){
@@ -99,7 +104,7 @@ impl StudentGrades {
                 NumberedStrand::new(StrandName::Evaluation2,&menu_parent)
             ],&menu_parent)
         ];
-        let ret: Rc<RefCell<StudentGrades>> = Rc::new(RefCell::new(StudentGrades{
+        let instance: Rc<RefCell<StudentGrades>> = Rc::new(RefCell::new(StudentGrades{
             overall:overall_criteria,
             current_selected_overall:Some(0),
             last_displayed_substrand:None,
@@ -110,19 +115,25 @@ impl StudentGrades {
             ]
         }));
         let mut c1 = 0;
-        for s in &ret.borrow().overall{
-            extern_listen_for_mouse(&s.ui_component.html_id,MouseEventInterface::new(ret.clone(),vec![c1]));
+        for s in &instance.borrow().overall{
+            extern_listen_for_mouse(&s.ui_component.html_id,MouseEventInterface::new(instance.clone(),vec![c1]));
             let mut c2 = 0;
             for c in &s.strands{
-                extern_listen_for_mouse(&c.ui_component.html_id, MouseEventInterface::new(ret.clone(),vec![c1,c2]));
+                extern_listen_for_mouse(&c.ui_component.html_id, MouseEventInterface::new(instance.clone(),vec![c1,c2]));
                 c2+=1;
             }
             c1+=1;
         }
-        extern_listen_for_input(GRADE_SELECTED_VALUE_SLIDEBAR_ID, InputEventInterface::new(ret.clone()));
-        let id = ret.borrow().overall.get(0).map( |v|&v.ui_component.html_id).unwrap().to_owned();
+        extern_listen_for_mouse(RESET_VALUE_BUTTON_ID, MouseEventInterface::new(instance.clone(), vec![]));
+
+        extern_listen_for_input(GRADE_SELECTED_VALUE_SLIDEBAR_ID, InputEventInterface::new(instance.clone()));
+        extern_listen_for_input(COMMENT_VALUE_INPUT_AREA_ID, InputEventInterface::new(instance.clone()));
+        extern_listen_for_window_events(WindowEventInterface::new(instance.clone()));
+
+        instance.borrow_mut().load_last_grades();
+        let id = instance.borrow().overall.get(0).map(|v|&v.ui_component.html_id).unwrap().to_owned();
         extern_simulate_click(&id);
-        ret
+        instance
     }
     fn load_last_grades(&mut self){
         for strand in &mut self.overall{
@@ -139,6 +150,8 @@ impl StudentGrades {
         }
         self.overall[i].show_sub_strands();
         self.current_selected_overall = Some(i);
+        self.unselect_substrand();
+        self.show_overall_on_display(&self.overall[i]);
     }
     fn unselect_overall(&mut self){
         if self.current_selected_overall.is_none(){
@@ -147,25 +160,69 @@ impl StudentGrades {
         self.overall[self.current_selected_overall.unwrap()].hide_sub_strands();
         self.current_selected_overall = None;
     }
+    fn unselect_substrand(&mut self){
+        self.last_displayed_substrand = None;
+        extern_restyle(LEVEL_DESCRIPTOR_AREA_ID, "visibility: collapse;height:0;");
+    }
+    fn select_substrand(&mut self, substrand_id: &Vec<u8>) {
+        let overall_idx = *substrand_id.get(0).unwrap() as usize;
+        let sub_idx = *substrand_id.get(1).unwrap() as usize;
+
+        self.last_displayed_substrand = Some(substrand_id.to_owned());
+
+        let strand = self.overall
+            .get(overall_idx).unwrap()
+            .strands.get(sub_idx).unwrap();
+        
+        self.show_substrand_on_display(strand);
+    }
+    fn show_substrand_on_display(&self, strand: &NumberedStrand) {
+        extern_restyle(LEVEL_DESCRIPTOR_AREA_ID, "visibility: unset;");
+        let criteria = strand.get_strand_name().to_criteria();
+        for i in 0..usize::min(criteria.len(),self.strand_display_elements.len()){
+            self.strand_display_elements[i].set_content_text(criteria[i]);
+        }
+        extern_set_input_value(GRADE_SELECTED_VALUE_SLIDEBAR_ID, &strand.get_value().to_string());
+        strand.get_comment()
+            .map_or_else(
+                ||extern_set_input_value(COMMENT_VALUE_INPUT_AREA_ID, ""),
+                |v|extern_set_input_value(COMMENT_VALUE_INPUT_AREA_ID, v)
+            );
+    }
+    fn show_overall_on_display(&self, strand: &OverallCriteria){
+        extern_set_input_value(GRADE_SELECTED_VALUE_SLIDEBAR_ID, &strand.get_value().to_string());
+        strand.get_comment()
+            .map_or_else(
+                ||extern_set_input_value(COMMENT_VALUE_INPUT_AREA_ID, ""),
+                |v|extern_set_input_value(COMMENT_VALUE_INPUT_AREA_ID, v)
+            );
+    }
 }
 
 impl MouseEventListener for StudentGrades{
     fn on_mouse_down(&mut self, _id: &str, interface_id: &Vec<u8>) {
+        if interface_id.len() == 0 {
+            if self.last_displayed_substrand.is_none(){
+                let overall = self.overall.get_mut(self.current_selected_overall.unwrap()).unwrap();
+                overall.on_value_clear();
+                extern_set_input_value(GRADE_SELECTED_VALUE_SLIDEBAR_ID, &overall.get_value().to_string());
+            }else{
+                let substrand_id = self.last_displayed_substrand.as_ref().unwrap();
+                let overall = self.overall.get_mut(substrand_id.get(0).unwrap_or(&0).to_owned() as usize).unwrap();
+                let sub = overall.strands.get_mut(substrand_id.get(1).unwrap_or(&0).to_owned() as usize).unwrap();
+                sub.on_value_clear();
+                extern_set_input_value(GRADE_SELECTED_VALUE_SLIDEBAR_ID, &sub.get_value().to_string());
+            }
+            return;
+        }
         let overall_idx = *interface_id.get(0).unwrap() as usize;
-        if interface_id.len() == 1 {
+        if interface_id.len() == 1 { // if is strand
             if self.current_selected_overall.is_some() {
                 self.unselect_overall();
             }
             self.select_overall(overall_idx);
-        }else if interface_id.len() == 2 { 
-            self.last_displayed_substrand = Some(interface_id.to_owned());
-            let criteria = self.overall
-                .get(overall_idx).unwrap()
-                .strands.get(*interface_id.get(1).unwrap() as usize).unwrap()
-                .get_strand_name().to_criteria();
-            for i in 0..usize::min(criteria.len(),self.strand_display_elements.len()){
-                self.strand_display_elements[i].set_content_text(criteria[i]);
-            }
+        }else if interface_id.len() == 2 {  // if is substrand
+            self.select_substrand(interface_id);
         }
     }
     fn on_mouse_up(&mut self, _id: &str, _interface_id: &Vec<u8>) {
@@ -173,27 +230,56 @@ impl MouseEventListener for StudentGrades{
     }
 }
 
-impl InputEventListener for StudentGrades{
-    fn on_input(&mut self, _id: &str, _data: &str) {
-        log("hello");
+impl WindowEventListener for StudentGrades {
+    fn on_window_change(&mut self) {
+
     }
-    fn on_change(&mut self, id: &str, data: &str){
+    fn on_window_close(&mut self) {
+        
+    }
+}
+
+impl InputEventListener for StudentGrades{
+    fn on_input(&mut self, id: &str, data: &str) {
+        log(&(id.to_owned() + "changed"));
         if self.last_displayed_substrand.is_none(){
+            if self.current_selected_overall.is_none(){
+                return;
+            }
+            let overall = self.overall.get_mut(self.current_selected_overall.unwrap()).unwrap();
+            if id == GRADE_SELECTED_VALUE_SLIDEBAR_ID {
+                let res = u8::from_str_radix(data, 10);
+                if res.is_ok(){
+                    let g = res.unwrap();
+                    overall.on_value_input(g);
+                }
+            }else if id == COMMENT_VALUE_INPUT_AREA_ID {
+                if data.len()>0 {
+                    overall.on_comment_input(data.to_string());
+                }else{
+                    overall.on_comment_clear();
+                }
+            }
             return;
         }
+        let substrand_id = self.last_displayed_substrand.as_ref().unwrap();
+        let overall = self.overall.get_mut(substrand_id.get(0).unwrap_or(&0).to_owned() as usize).unwrap();
+        let sub = overall.strands.get_mut(substrand_id.get(1).unwrap_or(&0).to_owned() as usize).unwrap();
         if id == GRADE_SELECTED_VALUE_SLIDEBAR_ID {
             let res = u8::from_str_radix(data, 10);
             if res.is_ok(){
                 let g = res.unwrap();
-                let substrand_id = self.last_displayed_substrand.as_ref().unwrap();
-                let overall = self.overall.get_mut(substrand_id.get(0).unwrap_or(&0).to_owned() as usize).unwrap();
-                if substrand_id.len() == 2{
-                    let sub = overall.strands.get_mut(substrand_id.get(1).unwrap_or(&0).to_owned() as usize).unwrap();
-                    sub.assign_value(g);
-                    sub.save_value();
-                }
+                sub.on_value_input(g);
+            }
+        }else if id == COMMENT_VALUE_INPUT_AREA_ID {
+            if data.len()>0 {
+                sub.on_comment_input(data.to_string());
+            }else{
+                sub.on_comment_clear();
             }
         }
+    }
+    fn on_change(&mut self, _id: &str, _data: &str){
     }
 }
 
@@ -310,12 +396,12 @@ trait Grade {
         self.assign_value(val);
         self.save_value();
     }
-    fn on_value_clear(&mut self){
-        self.clear_value();
-        self.save_comment();
-    }
     fn on_comment_clear(&mut self){
         self.clear_comment();
+        self.save_comment();
+    }
+    fn on_value_clear(&mut self){
+        self.clear_value();
         self.save_value();
     }
 }
@@ -422,7 +508,7 @@ impl Grade for OverallCriteria {
 
 impl OverallCriteria{
     fn new(strand_name:StrandName,ref_strands:Vec<NumberedStrand>,html_parent: &HtmlComponent)->OverallCriteria{
-        let mut c = OverallCriteria{
+        let c = OverallCriteria{
             ui_component: 
                 html_parent
                 .create_child(
@@ -550,6 +636,35 @@ impl InputEventInterface{
 impl InputEventInterface{
     fn new(callback:Rc<RefCell<dyn InputEventListener>>)-> InputEventInterface{
         InputEventInterface{
+            callback
+        }
+    }
+}
+
+trait WindowEventListener{
+    fn on_window_change(&mut self);
+    fn on_window_close(&mut self);
+}
+
+#[wasm_bindgen]
+struct WindowEventInterface{
+    callback:Rc<RefCell<dyn WindowEventListener>>
+}
+
+#[wasm_bindgen]
+#[allow(dead_code)]
+impl WindowEventInterface{
+    pub fn on_window_change(&self){
+        self.callback.borrow_mut().on_window_change();
+    }
+    pub fn on_window_close(&self){
+        self.callback.borrow_mut().on_window_close();
+    }
+}
+
+impl WindowEventInterface{
+    fn new(callback: Rc<RefCell<dyn WindowEventListener>>)->WindowEventInterface{
+        WindowEventInterface{
             callback
         }
     }
