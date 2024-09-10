@@ -30,3 +30,12 @@ function read_val_string(key){
     }
     return v.slice(0,v.length-1);
 }
+
+function save_pdf(bytes){
+    //WHY THE HECK DOES JAVASCRIPT MAKE ME PUT A BUFFER IN AN ARRAY INSTEAD OF PASSING IT DIRECTLY?????!?!?
+    //fix: https://stackoverflow.com/questions/38147480/creating-pdf-blob-from-array-and-viewing-it
+    //apparently, new Blob(bytes, {type:"application/pdf"}); breaks for some reason which I STILL can't comprehend
+    let blob = new Blob([bytes],{type:"application/pdf"});
+    let url = URL.createObjectURL(blob);
+    window.open(url);
+}
