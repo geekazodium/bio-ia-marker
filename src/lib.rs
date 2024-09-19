@@ -10,6 +10,7 @@ static GRADE_SELECTED_VALUE_SLIDEBAR_ID:&str = "selected_value_slidebar";
 static COMMENT_VALUE_INPUT_AREA_ID:&str = "comment_input";
 static LEVEL_DESCRIPTOR_AREA_ID:&str = "level_descriptor";
 static RESET_VALUE_BUTTON_ID:&str = "selected_value_reset";
+static RESET_GRADES_ID:&str = "reset_grades";
 
 static SUB_STRAND_HTML: &str = "
 <li class=\"dropdown_parent_bar\"> 
@@ -73,6 +74,15 @@ impl State {
         save_val_byte(&StrandName::from_index(index).to_string_v(), val | GRADE_EXISTS_FLAG)
     }
     pub fn generate_pdf(&self){
+        if self.student_grades.is_none(){
+            alert("failed to export, grades object does not exist");
+            return;
+        }
+
+        /*
+            Section ripped from the Lopdf library example code:
+            https://docs.rs/lopdf/latest/lopdf/index.html#
+         */
 
         // `with_version` specifes the PDF version this document complies with.
         let mut doc = Document::with_version("1.5");
@@ -115,58 +125,54 @@ impl State {
             },
         });
 
-        // `Content` is a wrapper struct around an operations struct that contains
-        // a vector of operations. The operations struct contains a vector of
-        // that match up with a particular PDF operator and operands.
-        // Refer to the PDF spec for more details on the operators and operands
-        // Note, the operators and operands are specified in a reverse order
-        // from how they actually appear in the PDF file itself.
-        let content = Content {
-            operations: vec![
-                // BT begins a text element. It takes no operands.
-                Operation::new("BT", vec![]),
-                // Tf specifies the font and font size.
-                // Font scaling is complicated in PDFs.
-                // Refer to the spec for more info.
-                // The `into()` methods convert the types into
-                // an enum that represents the basic object types in PDF documents.
-                Operation::new("Tf", vec!["F1".into(), 15.into()]),
-                // Td adjusts the translation components of the text matrix.
-                // When used for the first time after BT, it sets the initial
-                // text position on the page.
-                // Note: PDF documents have Y=0 at the bottom. Thus 600 to print text near the top.
-                Operation::new("Td", vec![50.into(), 800.into()]),
-                // Tj prints a string literal to the page. By default, this is black text that is
-                // filled in. There are other operators that can produce various textual effects and
-                // colors
-                Operation::new("Tj", vec![Object::string_literal("owo what is this a a a a a aaa aaaa aaaaaaaa a a a  a  a  a   a   a      a   a a aa a a a a")]),
-                // ET ends the text element.
-                Operation::new("ET", vec![]),
+        //edit to tutorial structure
 
+        let grades = self.student_grades.clone().unwrap();
 
-                Operation::new("BT", vec![]),
-                Operation::new("Tf", vec!["F1".into(), 15.into()]),
-                Operation::new("Td", vec![50.into(), 780.into()]),
-                Operation::new("Tj", vec![Object::string_literal("owo what is this a a a a a aaa aaaa aaaaaaaa a a a  a  a  a   a   a      a   a a aa a a a a")]),
-                Operation::new("ET", vec![]),
-            ],
+        let mut preprocessor = TextElementPreprocessor{
+            vec: vec![],
+            y:0,
+            page_height: 842,
+            text_area_range: 750
         };
+        for overall in &grades.borrow().overall{
+            overall.append_pdf_operations(&mut preprocessor);
+        }
+        //end edit to tutorial structure
 
-        // Streams are a dictionary followed by a (possibly encoded) sequence of bytes.
-        // What that sequence of bytes represents, depends on the context.
-        // The stream dictionary is set internally by lopdf and normally doesn't
-        // need to be manually manipulated. It contains keys such as
-        // Length, Filter, DecodeParams, etc.
-        let content_id = doc.add_object(Stream::new(dictionary! {}, content.encode().unwrap()));
+        let mut pages = vec![];
 
-        // Page is a dictionary that represents one page of a PDF file.
-        // Its required fields are "Type", "Parent" and "Contents".
-        let page_id = doc.add_object(dictionary! {
-            "Type" => "Page",
-            "Parent" => pages_id,
-            "Contents" => content_id,
-        });
+        for operations in preprocessor.vec{
+            // `Content` is a wrapper struct around an operations struct that contains
+            // a vector of operations. The operations struct contains a vector of
+            // that match up with a particular PDF operator and operands.
+            // Refer to the PDF spec for more details on the operators and operands
+            // Note, the operators and operands are specified in a reverse order
+            // from how they actually appear in the PDF file itself.
+            let content = Content {
+                operations
+            };
 
+            // Streams are a dictionary followed by a (possibly encoded) sequence of bytes.
+            // What that sequence of bytes represents, depends on the context.
+            // The stream dictionary is set internally by lopdf and normally doesn't
+            // need to be manually manipulated. It contains keys such as
+            // Length, Filter, DecodeParams, etc.
+            let content_id = doc.add_object(Stream::new(dictionary! {}, content.encode().unwrap()));
+
+            // Page is a dictionary that represents one page of a PDF file.
+            // Its required fields are "Type", "Parent" and "Contents".
+            let page_id = doc.add_object(dictionary! {
+                "Type" => "Page",
+                "Parent" => pages_id,
+                "Contents" => content_id,
+            });
+
+            pages.push(page_id.into());
+        }
+
+
+        let len = pages.len();
         // Again, "Pages" is the root of the page tree. The ID was already created
         // at the top of the page, since we needed it to assign to the parent element
         // of the page dictionary.
@@ -180,9 +186,9 @@ impl State {
             "Type" => "Pages",
             // Vector of page IDs in document. Normally would contain more than one ID
             // and be produced using a loop of some kind.
-            "Kids" => vec![page_id.into()],
+            "Kids" => pages,
             // Page count
-            "Count" => 1,
+            "Count" => len as i32,
             // ID of resources dictionary, defined earlier
             "Resources" => resources_id,
             // A rectangle that defines the boundaries of the physical or digital media.
@@ -205,14 +211,24 @@ impl State {
         doc.trailer.set("Root", catalog_id);
         doc.compress();
 
+
+        //edited below:
+        /*
+        since rust when run on a browser will obviously not have access to any filesystem,
+        we create a vector of unsigned 8 bit integers to serve as a buffer to write the
+        contents of the file, since a Vec<u8> has the Write trait.
+        */
         let mut write:Vec<u8> = vec![];
 
         let res = doc.save_to(&mut write);
+
+        //check if result is success
         if res.is_err(){
             log("failed to write pdf to buffer, help!");
             log(&res.unwrap_err().to_string());
             return;
         }
+        //calling extern function defined in js to save buffer as pdf.
         save_pdf(write);
     }
 }
@@ -449,19 +465,19 @@ impl StrandName{
     fn to_string(&self)->&str{
         match *self {
             Self::ResearchDesignOverall => "Research Design Overall",
-            Self::ResearchDesign1 => "Research Design 1",
-            Self::ResearchDesign2 => "Research Design 2",
-            Self::ResearchDesign3 => "Research Design 3",
+            Self::ResearchDesign1 => "Research Design I",
+            Self::ResearchDesign2 => "Research Design II",
+            Self::ResearchDesign3 => "Research Design III",
             Self::DataAnalysisOverall => "Data Analysis Overall",
-            Self::DataAnalysis1 => "Data Analysis 1",
-            Self::DataAnalysis2 => "Data Analysis 2",
-            Self::DataAnalysis3 => "Data Analysis 3",
+            Self::DataAnalysis1 => "Data Analysis I",
+            Self::DataAnalysis2 => "Data Analysis II",
+            Self::DataAnalysis3 => "Data Analysis III",
             Self::ConclusionOverall => "Conclusion Overall",
-            Self::Conclusion1 => "Conclusion 1",
-            Self::Conclusion2 => "Conclusion 2",
+            Self::Conclusion1 => "Conclusion I",
+            Self::Conclusion2 => "Conclusion II",
             Self::EvaluationOverall => "Evaluation Overall",
-            Self::Evaluation1 => "Evaluation 1",
-            Self::Evaluation2 => "Evaluation 2"
+            Self::Evaluation1 => "Evaluation I",
+            Self::Evaluation2 => "Evaluation II"
         }
     }
     fn to_criteria(&self) -> Vec<&str>{
@@ -583,6 +599,15 @@ impl NumberedStrand{
     fn hide(&self){
         self.ui_component.restyle("height:0;--anim-duration:0;--anim-direction:unset;visibility:collapse;--anim-name:none");
     }
+    fn append_pdf_operations(&self, preprocessor: &mut TextElementPreprocessor){
+        preprocessor.append_text(70, "F1", 13, &(self.get_strand_name().to_string().to_string() + ":"));
+        preprocessor.append_text(220, "F1", 13, &self.get_value().to_string());
+        preprocessor.move_scan_down(18);
+        if self.get_comment().is_some(){
+            preprocessor.append_multiline_text_force_spacing(80, 18, 70, "F1", 11, self.get_comment().map(|v|v.as_str()).unwrap_or(""));
+        }
+        preprocessor.move_scan_down(8);
+    }
 }
 
 impl Grade for NumberedStrand {
@@ -685,6 +710,85 @@ impl OverallCriteria{
     fn hide_sub_strands(&self){
         for s in &self.strands{
             s.hide();
+        }
+    }
+    fn append_pdf_operations(&self, preprocessor: &mut TextElementPreprocessor){
+        preprocessor.append_text(50, "F1", 15, &(self.get_strand_name().to_string().to_owned() + ":"),);
+        preprocessor.append_text(240, "F1", 15, &self.get_value().to_string());
+        preprocessor.move_scan_down(18);
+        if self.get_comment().is_some(){
+            preprocessor.append_multiline_text_force_spacing(60, 18, 70, "F1", 13, self.get_comment().map(|v|v.as_str()).unwrap());
+        }
+        preprocessor.move_scan_down(10);
+        
+        for substrand in &self.strands{
+            substrand.append_pdf_operations(preprocessor);
+        }
+    }
+}
+
+struct TextElementPreprocessor{
+    vec: Vec<Vec<Operation>>,
+    y: i32,
+    page_height: i32,
+    text_area_range: i32
+}
+
+impl TextElementPreprocessor{
+    fn append_text(&mut self,x: i32,font:&str,size:u32,text:&str){
+        let p = self.y.div_euclid(self.text_area_range);
+        let mut safety = 10;
+        while self.vec.len() <= p as usize || safety <= 0 {
+            safety-=1;
+            self.vec.push(vec![]);
+        }
+        if safety <= 0 {
+            crash("failed to create pdf, safety limit for pages created exceeded");
+        }
+        let page = self.vec.get_mut(p as usize);
+        if page.is_none(){
+            crash("failed to create pdf");
+        }
+        let page_content = page.unwrap();
+        page_content.push(Operation::new("BT", vec![]));
+        page_content.push(Operation::new("Tf", vec![font.into(), size.into()]));
+        page_content.push(Operation::new("Td", vec![x.into(), (self.page_height/2+self.text_area_range/2-i32::rem_euclid(self.y, self.text_area_range)).into()]));
+        page_content.push(Operation::new("Tj", vec![Object::string_literal(text)]));
+        page_content.push(Operation::new("ET", vec![]));
+    }
+    fn move_scan_down(&mut self, y: i32){
+        self.y += y;
+    }
+    fn split_by_max_line_len(string: &str, len: usize)->String{
+        string
+            .split("\n")
+            .map(
+                |s| s.split(" ")
+                    .map(|w|(w,1+w.len()))
+                    .scan(0, |s,w|{
+                        let mut sep = " ";
+                        if *s + w.1>len {
+                            *s = 0;
+                            sep = "\n";
+                        }else{
+                            *s+=w.1;
+                        }
+                        Some(w.0.to_owned() + sep)
+                    })
+                    .collect::<String>()
+            )
+            .collect()
+    }
+    fn append_multiline_text_force_spacing(&mut self,x: i32,line_height: i32,width: usize, font: &str, size:u32, text:&str){
+
+        let s = TextElementPreprocessor::split_by_max_line_len(
+                text,
+                width
+            )
+            .replace(" ", "\u{20} ");
+        for l in s.split("\n"){
+            self.append_text(x, font, size,l);
+            self.move_scan_down(line_height);
         }
     }
 }
