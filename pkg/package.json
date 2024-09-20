@@ -1,0 +1,17 @@
+{
+  "name": "bio-ia-marker",
+  "type": "module",
+  "description": "biology IA marker",
+  "version": "0.1.0",
+  "license": "GPL-3.0",
+  "files": [
+    "bio_ia_marker_bg.wasm",
+    "bio_ia_marker.js",
+    "bio_ia_marker.d.ts"
+  ],
+  "main": "bio_ia_marker.js",
+  "types": "bio_ia_marker.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
