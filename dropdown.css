@@ -118,3 +118,17 @@
     margin-left: calc(7.14% - 45px);
     min-height: 20%;
 }
+
+.file_operation_button{
+    margin: 4px;
+}
+
+.file_operation_button button{
+    margin: 5px;
+    height: 50pt;
+    width: 78pt;
+    border: 2pt;
+    border-color: black;
+    border-style: solid;
+    background: 0;
+}

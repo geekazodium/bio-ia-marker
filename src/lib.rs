@@ -52,6 +52,7 @@ extern {
     pub fn save_val_string(k: &str, v: &str);
     pub fn read_val_string(k: &str) -> String;
     pub fn save_pdf(f: Vec<u8>);
+    pub fn confirm(m: &str) -> bool;
 }
 
 #[wasm_bindgen]
@@ -289,6 +290,7 @@ impl StudentGrades {
 
         extern_listen_for_input(GRADE_SELECTED_VALUE_SLIDEBAR_ID, InputEventInterface::new(instance.clone()));
         extern_listen_for_input(COMMENT_VALUE_INPUT_AREA_ID, InputEventInterface::new(instance.clone()));
+        extern_listen_for_mouse(RESET_GRADES_ID, MouseEventInterface::new(instance.clone(), vec![]));
         extern_listen_for_window_events(WindowEventInterface::new(instance.clone()));
 
         instance.borrow_mut().load_last_grades();
@@ -358,10 +360,30 @@ impl StudentGrades {
                 |v|extern_set_input_value(COMMENT_VALUE_INPUT_AREA_ID, v)
             );
     }
+    fn attempt_reset_all(&mut self){
+        if !confirm("are you sure you want to reset all inputs?"){
+            return;
+        }
+        self.unselect_substrand();
+        self.unselect_overall();
+        for criteria in &mut self.overall {
+            criteria.on_value_clear();
+            criteria.on_comment_clear();
+            for sub in &mut criteria.strands{
+                sub.on_value_clear();
+                sub.on_comment_clear();
+            }
+        }
+        self.select_overall(0);
+    }
 }
 
 impl MouseEventListener for StudentGrades{
-    fn on_mouse_down(&mut self, _id: &str, interface_id: &Vec<u8>) {
+    fn on_mouse_down(&mut self, id: &str, interface_id: &Vec<u8>) {
+        if id == RESET_GRADES_ID{
+            self.attempt_reset_all();
+            return;
+        }
         if interface_id.len() == 0 {
             if self.last_displayed_substrand.is_none(){
                 let overall = self.overall.get_mut(self.current_selected_overall.unwrap()).unwrap();
@@ -604,7 +626,7 @@ impl NumberedStrand{
         preprocessor.append_text(220, "F1", 13, &self.get_value().to_string());
         preprocessor.move_scan_down(18);
         if self.get_comment().is_some(){
-            preprocessor.append_multiline_text_force_spacing(80, 18, 70, "F1", 11, self.get_comment().map(|v|v.as_str()).unwrap_or(""));
+            preprocessor.append_multiline_text_force_spacing(80, 18, 65, "F1", 11, self.get_comment().map(|v|v.as_str()).unwrap_or(""));
         }
         preprocessor.move_scan_down(8);
     }
@@ -717,7 +739,7 @@ impl OverallCriteria{
         preprocessor.append_text(240, "F1", 15, &self.get_value().to_string());
         preprocessor.move_scan_down(18);
         if self.get_comment().is_some(){
-            preprocessor.append_multiline_text_force_spacing(60, 18, 70, "F1", 13, self.get_comment().map(|v|v.as_str()).unwrap());
+            preprocessor.append_multiline_text_force_spacing(60, 18, 65, "F1", 13, self.get_comment().map(|v|v.as_str()).unwrap());
         }
         preprocessor.move_scan_down(10);
         
